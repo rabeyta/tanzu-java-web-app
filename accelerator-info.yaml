@@ -7,9 +7,6 @@ accelerator:
   source:
     image: registry.harbor.learn.tapsme.org/tap/tap-packages@sha256:0310128e62ade8150fbfa9fd82e826d98d4311a17b97ba5cb2bdab1ffc25d7d9
 fragments:
-  - name: build-wrapper-maven
-    source:
-      image: registry.harbor.learn.tapsme.org/tap/tap-packages@sha256:195a3ca6585fa91c41292584a19c2807c72ecdf986ce860a7147451e89d467d4
   - name: java-version
     source:
       image: registry.harbor.learn.tapsme.org/tap/tap-packages@sha256:fa976ccf1609cb69e74a0162f0f49581fd0d393003e2fbe5d54d12eae62b4ff9
