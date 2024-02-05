@@ -13,6 +13,11 @@ jobs:
       uses: azure/setup-kubectl@v3
       env:
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+    - name: Install ytt
+      uses: carvel-dev/setup-action@v2.0.0
+      with:
+        only: ytt
+        ytt: v0.47.0
     - name: build workload template
       run: |
         ytt -f  \
