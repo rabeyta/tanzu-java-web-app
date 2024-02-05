@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - id: install-kubectl
-      uses: azure/setup-kubectl@v3
+      uses: actions-hub/kubectl@master
       env:
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
     - name: Install ytt
