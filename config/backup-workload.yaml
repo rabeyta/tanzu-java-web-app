@@ -1,0 +1,35 @@
+apiVersion: carto.run/v1alpha1
+kind: Workload
+metadata:
+  name: prisma-tanzu-java-web-app
+  namespace: dev
+  labels:
+    apps.tanzu.vmware.com/workload-type: web-deliverable
+    apps.tanzu.vmware.com/language: java
+    apps.tanzu.vmware.com/auto-configure-actuators: "true"
+    apps.tanzu.vmware.com/has-tests: "true"
+    app.kubernetes.io/part-of: prisma-tanzu-java-web-app
+spec:
+  build:
+    env:
+      - name: BP_JVM_VERSION
+        value: "17"
+  params:
+  - name: annotations
+    value:
+      autoscaling.knative.dev/minScale: "1"
+  - name: gitops_ssh_secret
+    value: github-ssh-dev
+  - name: scanning_image_template
+    value: prisma-private-image-scan-template
+  - name: scanning_image_policy
+    value: prisma-scan-policy-dev
+  - name: scanning_source_policy
+    value: prisma-scan-policy-dev
+  - name: scanning_source_template
+    value: prisma-blob-source-scan-template
+  source:
+    git:
+      url: ssh://git@github.com/rabeyta/tanzu-java-web-app.git
+      ref:
+        branch: main
