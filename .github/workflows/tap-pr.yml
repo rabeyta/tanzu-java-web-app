@@ -48,4 +48,4 @@ jobs:
           dws(){
               for workload in $(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workloads | grep -v NAME | cut -f1 -d ' ' | grep $1); do kubectl -n ${{ env.WORKLOAD_NAMESPACE }} delete workload/$workload --force; done
           }
-          dws "${{ env.REPO_NAME }}-pr"
+          dws "${{ env.REPO_NAME }}-pr-${{ github.event.pull_request.number }}"
