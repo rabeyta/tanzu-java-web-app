@@ -26,7 +26,7 @@ jobs:
     - name: build and deploy workload template
       run: |
         echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
-        --data-value-yaml name=$(echo -n ${{ env.REPO_NAME}} | cut -d / -f 2) \
+        --data-value-yaml name=${{ env.REPO_NAME}} \
         --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
         --data-value-yaml sha=$(git rev-parse --short HEAD) \
