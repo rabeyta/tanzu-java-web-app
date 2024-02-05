@@ -7,7 +7,7 @@ env:
   WORKLOAD_NAMESPACE: dev
 
 jobs:
-  deploy:
+  build:
     if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     steps:
