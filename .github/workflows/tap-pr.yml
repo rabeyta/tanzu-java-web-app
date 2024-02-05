@@ -1,0 +1,27 @@
+name: TAP PR
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - id: install-kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: '1.26.0' # default is latest stable
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+    - name: build workload template
+      run: |
+        ytt -f  \
+        --data-value-yaml name=tanzu-java-web-app \
+        --data-value-yaml namespace=dev \
+        --data-value-yaml pr=${{ github.event.pull_request.number }} \
+        --data-value-yaml sha=$(git rev-parse --short HEAD)
+        --data-value-yaml branch=${{ github.head_ref }} \
+        --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
+
