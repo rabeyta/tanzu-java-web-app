@@ -26,5 +26,5 @@ jobs:
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
         --data-value-yaml sha=$(git rev-parse --short HEAD) \
         --data-value-yaml branch=${{ github.head_ref }} \
-        --data-value-yaml repo=${{ github.repository }} --validate=false | kubectl apply -f-
+        --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
 
