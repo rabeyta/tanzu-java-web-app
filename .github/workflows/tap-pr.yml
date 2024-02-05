@@ -2,10 +2,13 @@ name: TAP PR
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
+env:
+  WORKLOAD_NAMESPACE: dev
 
 jobs:
-  build:
+  deploy:
+    if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -18,15 +21,32 @@ jobs:
       with:
         only: ytt
         ytt: v0.47.0
-    - name: test kube
-      run: kubectl config get-contexts
-    - name: build workload template
+    - name: build and deploy workload template
       run: |
         echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
-        --data-value-yaml name=tanzu-java-web-app \
-        --data-value-yaml namespace=dev \
+        --data-value-yaml name=${{ github.repository }} \
+        --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
         --data-value-yaml sha=$(git rev-parse --short HEAD) \
         --data-value-yaml branch=${{ github.head_ref }} \
         --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
-
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: install-kubectl
+        uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
+      - name: Install ytt
+        uses: carvel-dev/setup-action@v2.0.0
+        with:
+          only: ytt
+          ytt: v0.47.0
+      - name: cleanup workload
+        run: |
+          dws(){
+              for workload in $(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workloads | grep -v NAME | cut -f1 -d ' ' | grep $1); do kubectl -n ${{ env.WORKLOAD_NAMESPACE }} delete workload/$workload --force; done
+          }
+          dws "${{ github.repository }}-pr"
