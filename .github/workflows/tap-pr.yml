@@ -18,6 +18,8 @@ jobs:
       with:
         only: ytt
         ytt: v0.47.0
+    - name: test kube
+      run: kubectl config get-contexts
     - name: build workload template
       run: |
         echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
