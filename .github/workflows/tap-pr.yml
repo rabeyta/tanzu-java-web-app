@@ -3,6 +3,8 @@ name: TAP PR
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+env:
+  KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
 
 jobs:
   build:
@@ -19,8 +21,6 @@ jobs:
     - name: test kube
       run: kubectl config get-contexts
     - name: build workload template
-      env:
-        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       run: |
         echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
         --data-value-yaml name=tanzu-java-web-app \
