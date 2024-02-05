@@ -20,7 +20,7 @@ jobs:
         ytt: v0.47.0
     - name: build workload template
       run: |
-        ytt -f  \
+        echo ${{ vars.WORKLOAD_YAML }} | ytt -f - \
         --data-value-yaml name=tanzu-java-web-app \
         --data-value-yaml namespace=dev \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
