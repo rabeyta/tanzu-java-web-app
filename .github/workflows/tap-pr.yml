@@ -10,9 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - id: install-kubectl
-      uses: actions-hub/kubectl@master
-      env:
-        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      uses: azure/setup-kubectl@v3
     - name: Install ytt
       uses: carvel-dev/setup-action@v2.0.0
       with:
@@ -21,6 +19,8 @@ jobs:
     - name: test kube
       run: kubectl config get-contexts
     - name: build workload template
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       run: |
         echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
         --data-value-yaml name=tanzu-java-web-app \
