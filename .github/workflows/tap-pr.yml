@@ -50,6 +50,7 @@ jobs:
               if [[ $stepStatus == "False" ]]; then
                 exit 1
               elif [[ $stepStatus == "True" ]]; then
+                echo "tests completed successfully"
                 exit 0
               else
                 sleep 15
@@ -70,6 +71,7 @@ jobs:
               if [[ $stepStatus == "False" ]]; then
                 exit 1
               elif [[ $stepStatus == "True" ]]; then
+                echo "build completed successfully"
                 exit 0
               else
                 sleep 30
