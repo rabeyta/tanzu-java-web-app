@@ -25,13 +25,60 @@ jobs:
         ytt: v0.47.0
     - name: build and deploy workload template
       run: |
-        echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
+        workloadYaml=$(echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
         --data-value-yaml name=${{ env.REPO_NAME}} \
         --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
-        --data-value-yaml sha=$(git rev-parse --short HEAD) \
+        --data-value-yaml shortSha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }}) \
+        --data-value-yaml sha=${{ github.event.pull_request.head.sha }} \
         --data-value-yaml branch=${{ github.head_ref }} \
-        --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
+        --data-value-yaml repo=${{ github.repository }})
+        echo "$workloadYaml" 
+        echo "$workloadYaml" | kubectl apply -f-
+    - name: Get workload name
+      run: echo "FORMATTED_WORKLOAD_NAME=${{ env.REPO_NAME }}-pr-${{ github.event.pull_request.number }}-$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
+    - name: check test status
+      timeout-minutes: 10
+      run: |
+        while [[ true ]]; do
+          resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
+          sourceTesterConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "source-tester") | .conditions')
+          while read -r condition; do
+            if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
+              stepStatus=$(echo "$condition" | jq -r '.status')
+              echo "$condition" | jq -r '.message'
+              if [[ $stepStatus == "False" ]]; then
+                exit 1
+              elif [[ $stepStatus == "True" ]]; then
+                echo "tests completed successfully"
+                exit 0
+              else
+                sleep 15
+              fi
+            fi
+          done < <(jq -c '. []' <<< "$sourceTesterConditions")
+        done
+    - name: check build status
+      timeout-minutes: 15
+      run: |
+        while true; do
+          resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
+          imageProviderConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "image-provider") | .conditions')
+          while read -r condition; do
+            if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
+              stepStatus=$(echo "$condition" | jq -r '.status')
+              echo "$condition" | jq -r '.message'
+              if [[ $stepStatus == "False" ]]; then
+                exit 1
+              elif [[ $stepStatus == "True" ]]; then
+                echo "build completed successfully"
+                exit 0
+              else
+                sleep 15
+              fi
+            fi
+          done < <(jq -c '. []' <<< "$imageProviderConditions")
+        done
   cleanup:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
