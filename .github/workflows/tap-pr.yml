@@ -25,7 +25,7 @@ jobs:
         ytt: v0.47.0
     - name: build and deploy workload template
       run: |
-        workloadYaml=$(echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
+        workloadYaml=$(ytt -f $GITHUB_WORKSPACE/config/pr-workload-template.yaml \
         --data-value-yaml name=${{ env.REPO_NAME}} \
         --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
