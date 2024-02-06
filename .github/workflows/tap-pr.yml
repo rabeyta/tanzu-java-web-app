@@ -25,44 +25,61 @@ jobs:
         ytt: v0.47.0
     - name: build and deploy workload template
       run: |
-        echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
+        workloadYaml=$(echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
         --data-value-yaml name=${{ env.REPO_NAME}} \
         --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
         --data-value-yaml shortSha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }}) \
         --data-value-yaml sha=${{ github.event.pull_request.head.sha }} \
         --data-value-yaml branch=${{ github.head_ref }} \
-        --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
+        --data-value-yaml repo=${{ github.repository }})
+        echo "$workloadYaml" 
+        echo "$workloadYaml" | kubectl apply -f-
     - name: Get workload name
       run: echo "FORMATTED_WORKLOAD_NAME=${{ env.REPO_NAME }}-pr-${{ github.event.pull_request.number }}-$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
-    - name: check status
+    - name: check test status
       timeout-minutes: 10
       run: |
-        # Initialize a variable to store the overall status of the conditions
-        OVERALL_STATUS="Unknown"
-        # Loop until the overall status is either True or False
-        while [[ $OVERALL_STATUS == "Unknown" ]]; do
-          # Get the status.conditions of the resource as a JSON array
-          CONDITIONS=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.conditions}')
-          # Filter the conditions by the name field
-          FILTERED=$(echo $CONDITIONS | jq -c '.[] | select(.name == "source-tester")')
-          # Loop through the filtered array and check each condition
-          for CONDITION in $(echo $FILTERED | jq -c '.[]'); do
-            # Extract the type, status, and message fields
-            TYPE=$(echo $CONDITION | jq -r '.type')
-            STATUS=$(echo $CONDITION | jq -r '.status')
-            MESSAGE=$(echo $CONDITION | jq -r '.message')
-            # If the type is ResourcesHealthy and the status is False, fail the action and print the message
-            if [[ $TYPE == "ResourcesHealthy" && $STATUS == "False" ]]; then
-              echo $MESSAGE
-              exit 1
-            fi
-            # If the status is True, set the overall status to True
-            if [[ $STATUS == "True" ]]; then
-              OVERALL_STATUS="True"
+        while [[ true ]]; do
+          resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
+          sourceTesterConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "source-tester") | .conditions')
+          jq -c '. []' <<< "$sourceTesterConditions" | while read -r condition; do
+            if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
+              stepStatus=$(echo "$condition" | jq -r '.status')
+              message=$(echo "$condition" | jq -r '.message')
+              if [[ $stepStatus == "False" ]]; then
+                echo $message
+                exit 1
+              elif [[ $stepStatus == "True" ]]; then
+                echo $message
+                exit 0
+              else
+                sleep 15
+              fi
             fi
           done
-          sleep 10
+        done
+    - name: check build status
+      timeout-minutes: 15
+      run: |
+        while [[ true ]]; do
+          resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
+          sourceTesterConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "image-provider") | .conditions')
+          jq -c '. []' <<< "$sourceTesterConditions" | while read -r condition; do
+            if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
+              stepStatus=$(echo "$condition" | jq -r '.status')
+              message=$(echo "$condition" | jq -r '.message')
+              if [[ $stepStatus == "False" ]]; then
+                echo $message
+                exit 1
+              elif [[ $stepStatus == "True" ]]; then
+                echo $message
+                exit 0
+              else
+                sleep 15
+              fi
+            fi
+          done
         done
   cleanup:
     if: github.event.action == 'closed'
