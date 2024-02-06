@@ -74,7 +74,7 @@ jobs:
                 echo "build completed successfully"
                 exit 0
               else
-                sleep 30
+                sleep 15
               fi
             fi
           done < <(jq -c '. []' <<< "$imageProviderConditions")
