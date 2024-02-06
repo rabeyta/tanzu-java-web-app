@@ -23,18 +23,43 @@ jobs:
       with:
         only: ytt
         ytt: v0.47.0
-    - name: build and deploy workload template
+    - name: create and apply workload yaml
       run: |
-        workloadYaml=$(echo -n ${{ vars.WORKLOAD_YAML }} | base64 -d | ytt -f - \
-        --data-value-yaml name=${{ env.REPO_NAME}} \
-        --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
-        --data-value-yaml pr=${{ github.event.pull_request.number }} \
-        --data-value-yaml shortSha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }}) \
-        --data-value-yaml sha=${{ github.event.pull_request.head.sha }} \
-        --data-value-yaml branch=${{ github.head_ref }} \
-        --data-value-yaml repo=${{ github.repository }})
-        echo "$workloadYaml" 
-        echo "$workloadYaml" | kubectl apply -f-
+        workloadTemplate=$(cat << EOF
+          #@ load("@ytt:data", "data")
+          ---
+          apiVersion: carto.run/v1alpha1
+          kind: Workload
+          metadata:
+            name: #@ data.values.name + "-pr-" + str(data.values.pr) + "-" + str(data.values.shortSha)
+            namespace: #@ data.values.namespace
+            labels:
+              apps.tanzu.vmware.com/workload-type: web
+              apps.tanzu.vmware.com/pull-request: "true"
+              app.kubernetes.io/part-of: #@ data.values.name + "-pr-" + str(data.values.pr) + "-" + str(data.values.shortSha)
+          spec:
+            build:
+              env:
+                - name: BP_JVM_VERSION
+                  value: "17"
+            source:
+              git:
+                url: #@ "https://github.com/" + data.values.repo
+                ref:
+                  commit: #@ str(data.values.sha)
+        EOF
+        )
+        echo $workloadTemplate
+        workloadYaml=$(echo -n $workloadTemplate | ytt -f - \
+                --data-value-yaml name=${{ env.REPO_NAME}} \
+                --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
+                --data-value-yaml pr=${{ github.event.pull_request.number }} \
+                --data-value-yaml shortSha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }}) \
+                --data-value-yaml sha=${{ github.event.pull_request.head.sha }} \
+                --data-value-yaml branch=${{ github.head_ref }} \
+                --data-value-yaml repo=${{ github.repository }})
+        echo "$workloadYaml"
+        echo -n "$workloadYaml" | kubectl apply -f-
     - name: Get workload name
       run: echo "FORMATTED_WORKLOAD_NAME=${{ env.REPO_NAME }}-pr-${{ github.event.pull_request.number }}-$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
     - name: check test status
