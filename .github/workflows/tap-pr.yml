@@ -29,8 +29,8 @@ jobs:
         --data-value-yaml name=${{ env.REPO_NAME}} \
         --data-value-yaml namespace=${{ env.WORKLOAD_NAMESPACE }} \
         --data-value-yaml pr=${{ github.event.pull_request.number }} \
-        --data-value-yaml shortSha=$(git rev-parse --short ${{ GITHUB_SHA }}) \
-        --data-value-yaml sha=${{ GITHUB_SHA }} \
+        --data-value-yaml shortSha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }}) \
+        --data-value-yaml sha=${{ github.event.pull_request.head.sha }} \
         --data-value-yaml branch=${{ github.head_ref }} \
         --data-value-yaml repo=${{ github.repository }} | kubectl apply -f-
   cleanup:
