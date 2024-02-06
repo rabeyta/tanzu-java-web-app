@@ -43,43 +43,39 @@ jobs:
         while [[ true ]]; do
           resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
           sourceTesterConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "source-tester") | .conditions')
-          jq -c '. []' <<< "$sourceTesterConditions" | while read -r condition; do
+          while read -r condition; do
             if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
               stepStatus=$(echo "$condition" | jq -r '.status')
-              message=$(echo "$condition" | jq -r '.message')
+              echo "$condition" | jq -r '.message'
               if [[ $stepStatus == "False" ]]; then
-                echo $message
                 exit 1
               elif [[ $stepStatus == "True" ]]; then
-                echo $message
                 exit 0
               else
                 sleep 15
               fi
             fi
-          done
+          done < <(jq -c '. []' <<< "$sourceTesterConditions")
         done
     - name: check build status
       timeout-minutes: 15
       run: |
-        while [[ true ]]; do
+        while true; do
           resources=$(kubectl -n ${{ env.WORKLOAD_NAMESPACE }} get workload ${{ env.FORMATTED_WORKLOAD_NAME }} -o jsonpath='{.status.resources}')
-          sourceTesterConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "image-provider") | .conditions')
-          jq -c '. []' <<< "$sourceTesterConditions" | while read -r condition; do
+          imageProviderConditions=$(echo "$resources" | sed 's/$/\\n/' | tr -d '\n' | sed '$ s/\\n$//' | jq -c '.[] | select(.name == "image-provider") | .conditions')
+          while read -r condition; do
             if [[ $(echo "$condition" | jq -r '.type') == "Healthy" ]]; then
               stepStatus=$(echo "$condition" | jq -r '.status')
-              message=$(echo "$condition" | jq -r '.message')
+              echo "$condition" | jq -r '.message'
               if [[ $stepStatus == "False" ]]; then
-                echo $message
                 exit 1
               elif [[ $stepStatus == "True" ]]; then
-                echo $message
                 exit 0
               else
-                sleep 15
+                sleep 30
               fi
             fi
-          done
+          done < <(jq -c '. []' <<< "$imageProviderConditions")
         done
   cleanup:
     if: github.event.action == 'closed'
