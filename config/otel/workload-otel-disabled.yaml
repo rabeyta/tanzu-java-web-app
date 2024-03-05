@@ -25,8 +25,6 @@ spec:
   - name: annotations
     value:
       autoscaling.knative.dev/minScale: "1"
-  - name: clusterBuilder
-    value: default-with-otel
   - name: gitops_ssh_secret
     value: github-ssh-dev
   source:
