@@ -1,0 +1,38 @@
+apiVersion: carto.run/v1alpha1
+kind: Workload
+metadata:
+  name: eks-tanzu-java-web-app
+  namespace: eks
+  labels:
+    apps.tanzu.vmware.com/workload-type: web-deliverable
+    apps.tanzu.vmware.com/language: java
+    apps.tanzu.vmware.com/auto-configure-actuators: "true"
+    apps.tanzu.vmware.com/has-tests: "true"
+    app.kubernetes.io/part-of: eks-tanzu-java-web-app
+spec:
+  build:
+    env:
+      - name: BP_JVM_VERSION
+        value: "17"
+      - name: BP_OPENTELEMETRY_ENABLED
+        value: "true"
+  env:
+    - name: OTEL_JAVAAGENT_ENABLED
+      value: "true"
+    - name: OTEL_METRICS_EXPORTER
+      value: "otlp"
+    - name: OTEL_TRACES_EXPORTER
+      value: "otlp"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://wavefront-proxy.observability-system.svc.cluster.local:4317"
+  params:
+  - name: annotations
+    value:
+      autoscaling.knative.dev/minScale: "1"
+  - name: gitops_ssh_secret
+    value: github-basic-auth
+  source:
+    git:
+      url: https://github.com/rabeyta/tanzu-java-web-app.git
+      ref:
+        branch: main
